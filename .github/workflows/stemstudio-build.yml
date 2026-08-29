@@ -1,0 +1,36 @@
+name: Stem Studio APK Build
+
+on:
+  push:
+    branches: [ stemstudio-build-temp ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct source archive
+        run: |
+          cat stemstudio-build/chunk00.b64 stemstudio-build/chunk01.b64 stemstudio-build/chunk02.b64 > /tmp/stemstudio.zip.b64
+          base64 -d /tmp/stemstudio.zip.b64 > /tmp/stemstudio.zip
+          mkdir -p /tmp/stemstudio-src
+          unzip -q /tmp/stemstudio.zip -d /tmp/stemstudio-src
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install SDK 36
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Build debug APK
+        working-directory: /tmp/stemstudio-src/StemStudioAndroid
+        run: gradle assembleDebug --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StemStudio-debug-apk
+          path: /tmp/stemstudio-src/StemStudioAndroid/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
